@@ -71,11 +71,9 @@
         const downloadBtn = document.getElementById('download-btn');
         const errorMessage = document.getElementById('error-message');
 
-        const imageApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=`;
-        const textApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=`;
+        // This is the endpoint for your serverless function
+        const generateApiUrl = `/api/generate`;
         
-        const apiKey = ""; // API key will be provided by the system.
-
         generateBtn.addEventListener('click', async () => {
             const topic = topicInput.value.trim();
 
@@ -92,64 +90,27 @@
             loadingSpinner.classList.remove('hidden');
 
             try {
-                // Step 1: Generate the meme text using the LLM
-                const textPrompt = `Generate a funny, concise, and clever meme caption in English for the topic "${topic}". It can be one or two lines. Return the response as a JSON object with a single 'caption' property.`;
-                const textPayload = {
-                    contents: [{ parts: [{ text: textPrompt }] }],
-                    generationConfig: {
-                        responseMimeType: "application/json",
-                        responseSchema: {
-                            type: "OBJECT",
-                            properties: {
-                                "caption": { "type": "STRING" }
-                            }
-                        }
-                    }
-                };
-
-                const textResponse = await fetch(textApiUrl + apiKey, {
+                // Call our serverless function with the user's topic
+                const response = await fetch(generateApiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(textPayload)
-                });
-                
-                if (!textResponse.ok) {
-                    throw new Error(`Text API error! status: ${textResponse.status}`);
-                }
-
-                const textResult = await textResponse.json();
-                const textData = JSON.parse(textResult.candidates[0].content.parts[0].text);
-                const caption = textData.caption;
-                
-                const lines = caption.split('\n').filter(line => line.trim() !== '');
-
-                // Step 2: Generate the image using the image model
-                const imagePrompt = `A humorous, high-quality, modern internet meme image based on the topic: "${topic}". The image should have an empty space at the top and bottom for text. The style should be realistic and slightly absurd.`;
-                const imagePayload = {
-                    instances: [{ prompt: imagePrompt }],
-                    parameters: { sampleCount: 1 }
-                };
-
-                const imageResponse = await fetch(imageApiUrl + apiKey, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(imagePayload)
+                    body: JSON.stringify({ topic }),
                 });
 
-                if (!imageResponse.ok) {
-                    throw new Error(`Image API error! status: ${imageResponse.status}`);
+                if (!response.ok) {
+                    throw new Error(`Serverless function error! status: ${response.status}`);
                 }
 
-                const imageResult = await imageResponse.json();
-                const base64Data = imageResult?.predictions?.[0]?.bytesBase64Encoded;
-
-                if (!base64Data) {
-                    throw new Error("No image data received from the API.");
+                const result = await response.json();
+                const { imageData, caption } = result;
+                
+                if (!imageData || !caption) {
+                    throw new Error("Failed to receive complete data from serverless function.");
                 }
                 
                 // Draw the text onto the image
                 const img = new Image();
-                img.src = `data:image/png;base64,${base64Data}`;
+                img.src = `data:image/png;base64,${imageData}`;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     canvas.width = img.width;
@@ -204,6 +165,8 @@
                     const maxWidth = canvas.width * 0.9;
                     const lineHeight = 60;
                     
+                    const lines = caption.split('\n').filter(line => line.trim() !== '');
+
                     if (lines.length === 1) {
                         wrapText(ctx, lines[0], canvas.width / 2, canvas.height - (lineHeight / 2) - 10, maxWidth, lineHeight);
                     } else if (lines.length === 2) {
