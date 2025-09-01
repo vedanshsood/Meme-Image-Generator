@@ -25,7 +25,7 @@ export default async function handler(req, res) {
 
     try {
         // Step 1: Generate the meme text using the text model
-        const textModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
+        const textModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const textPrompt = `Generate a funny, concise, and clever meme caption in English for the topic "${topic}". It can be one or two lines.`;
         
         const textResult = await textModel.generateContent(textPrompt);
