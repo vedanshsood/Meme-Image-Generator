@@ -32,11 +32,16 @@ export default async function handler(req, res) {
         const caption = textResult.response.text;
         
         // Step 2: Generate the meme image
-        const imageModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const imageModel = genAI.getGenerativeModel({ 
+            model: "gemini-1.5-pro",
+            generationConfig: {
+                responseModalities: ["TEXT", "IMAGE"]
+            }
+        });
         const imagePrompt = `A humorous, high-quality, modern internet meme image based on the topic: "${topic}". The style should be realistic and slightly absurd.`;
 
         const imageResult = await imageModel.generateContent(imagePrompt);
-        const imageData = imageResult.response.image.base64;
+        const imageData = imageResult.response.candidates[0].content.parts[0].image.base64;
 
         res.status(200).json({ imageData, caption });
 
