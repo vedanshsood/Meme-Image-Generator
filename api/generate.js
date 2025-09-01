@@ -24,16 +24,16 @@ export default async function handler(req, res) {
     const genAI = new GoogleGenerativeAI(apiKey);
 
     try {
-        // Step 1: Generate the meme text using the text model
+        // Step 1: Generate the meme text
         const textModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const textPrompt = `Generate a funny, concise, and clever meme caption in English for the topic "${topic}". It can be one or two lines.`;
         
         const textResult = await textModel.generateContent(textPrompt);
         const caption = textResult.response.text;
         
-        // Step 2: Generate the meme image using the image model
-        const imageModel = genAI.getGenerativeModel({ model: "imagen-3.0-generate-002" });
-        const imagePrompt = `A humorous, high-quality, modern internet meme image based on the topic: "${topic}". The image should have an empty space at the top and bottom for text. The style should be realistic and slightly absurd.`;
+        // Step 2: Generate the meme image
+        const imageModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const imagePrompt = `A humorous, high-quality, modern internet meme image based on the topic: "${topic}". The style should be realistic and slightly absurd.`;
 
         const imageResult = await imageModel.generateContent(imagePrompt);
         const imageData = imageResult.response.image.base64;
