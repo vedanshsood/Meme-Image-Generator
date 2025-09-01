@@ -1,0 +1,11 @@
+{
+  "name": "meme-generator-api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.1.3"
+  }
+}
