@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Meme Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans flex items-center justify-center min-h-screen p-4">
+
+    <!-- Main Container -->
+    <div class="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-lg text-center flex flex-col items-center space-y-6">
+        <h1 class="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 rounded-lg">
+            AI Meme Generator
+        </h1>
+        <p class="text-gray-400 text-sm">Create a hilarious meme from any topic.</p>
+
+        <!-- Input and Button -->
+        <div class="w-full flex flex-col items-center space-y-4">
+            <input id="topic-input" type="text" placeholder="Enter your meme topic..." class="w-full p-3 rounded-md bg-gray-700 text-white placeholder-gray-500 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300">
+            <button id="generate-btn" class="w-full px-6 py-3 font-semibold text-white bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg hover:from-purple-600 hover:to-pink-600 transition-all duration-300 transform hover:scale-105 active:scale-95">
+                Generate Meme
+            </button>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading-spinner" class="hidden flex flex-col items-center justify-center space-y-2 mt-4">
+            <svg class="animate-spin h-8 w-8 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+            <p class="text-gray-400 text-sm">Generating...</p>
+        </div>
+
+        <!-- Image Display -->
+        <div id="image-container" class="relative w-full aspect-w-16 aspect-h-9 hidden rounded-md overflow-hidden">
+            <img id="meme-image" src="" alt="Generated Meme" class="w-full h-auto object-cover rounded-md shadow-lg">
+        </div>
+
+        <!-- Download Button -->
+        <button id="download-btn" class="hidden px-6 py-3 font-semibold text-white bg-gradient-to-r from-green-500 to-teal-500 rounded-lg shadow-lg hover:from-green-600 hover:to-teal-600 transition-all duration-300 transform hover:scale-105 active:scale-95">
+            Download Meme
+        </button>
+        
+        <!-- Error Message -->
+        <p id="error-message" class="hidden text-red-400 text-sm mt-4">
+        </p>
+
+    </div>
+
+    <script>
+        const generateBtn = document.getElementById('generate-btn');
+        const topicInput = document.getElementById('topic-input');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const imageContainer = document.getElementById('image-container');
+        const memeImage = document.getElementById('meme-image');
+        const downloadBtn = document.getElementById('download-btn');
+        const errorMessage = document.getElementById('error-message');
+
+        const imageApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=`;
+        const textApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=`;
+        
+        const apiKey = ""; // API key will be provided by the system.
+
+        generateBtn.addEventListener('click', async () => {
+            const topic = topicInput.value.trim();
+
+            if (!topic) {
+                showError("Please enter a topic to generate a meme.");
+                return;
+            }
+
+            // Hide previous results and show loading spinner
+            memeImage.src = '';
+            imageContainer.classList.add('hidden');
+            downloadBtn.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+            loadingSpinner.classList.remove('hidden');
+
+            try {
+                // Step 1: Generate the meme text using the LLM
+                const textPrompt = `Generate a funny, concise, and clever meme caption in English for the topic "${topic}". It can be one or two lines. Return the response as a JSON object with a single 'caption' property.`;
+                const textPayload = {
+                    contents: [{ parts: [{ text: textPrompt }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                "caption": { "type": "STRING" }
+                            }
+                        }
+                    }
+                };
+
+                const textResponse = await fetch(textApiUrl + apiKey, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(textPayload)
+                });
+                
+                if (!textResponse.ok) {
+                    throw new Error(`Text API error! status: ${textResponse.status}`);
+                }
+
+                const textResult = await textResponse.json();
+                const textData = JSON.parse(textResult.candidates[0].content.parts[0].text);
+                const caption = textData.caption;
+                
+                const lines = caption.split('\n').filter(line => line.trim() !== '');
+
+                // Step 2: Generate the image using the image model
+                const imagePrompt = `A humorous, high-quality, modern internet meme image based on the topic: "${topic}". The image should have an empty space at the top and bottom for text. The style should be realistic and slightly absurd.`;
+                const imagePayload = {
+                    instances: [{ prompt: imagePrompt }],
+                    parameters: { sampleCount: 1 }
+                };
+
+                const imageResponse = await fetch(imageApiUrl + apiKey, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(imagePayload)
+                });
+
+                if (!imageResponse.ok) {
+                    throw new Error(`Image API error! status: ${imageResponse.status}`);
+                }
+
+                const imageResult = await imageResponse.json();
+                const base64Data = imageResult?.predictions?.[0]?.bytesBase64Encoded;
+
+                if (!base64Data) {
+                    throw new Error("No image data received from the API.");
+                }
+                
+                // Draw the text onto the image
+                const img = new Image();
+                img.src = `data:image/png;base64,${base64Data}`;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+
+                    ctx.font = '800 48px Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif';
+                    ctx.fillStyle = 'white';
+                    ctx.strokeStyle = 'black';
+                    ctx.lineWidth = 2;
+                    ctx.textAlign = 'center';
+
+                    // Function to wrap and draw text
+                    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+                        const words = text.split(' ');
+                        let line = '';
+                        let lines = [];
+                        let testLine = '';
+
+                        for(let n = 0; n < words.length; n++) {
+                            testLine += words[n] + ' ';
+                            let metrics = ctx.measureText(testLine);
+                            let testWidth = metrics.width;
+                            if (testWidth > maxWidth && n > 0) {
+                                lines.push(line.trim());
+                                line = words[n] + ' ';
+                                testLine = words[n] + ' ';
+                            } else {
+                                line += words[n] + ' ';
+                            }
+                        }
+                        lines.push(line.trim());
+
+                        // Adjust y position based on number of lines to center vertically
+                        const totalHeight = lines.length * lineHeight;
+                        let startY = y;
+                        if (y < canvas.height / 2) { // Top text
+                            startY = y - (totalHeight / 2) + (lineHeight / 2);
+                        } else { // Bottom text
+                            startY = y - (totalHeight / 2) + (lineHeight / 2);
+                        }
+                        
+                        for(let i = 0; i < lines.length; i++) {
+                            const currentY = startY + (i * lineHeight);
+                            ctx.strokeText(lines[i].toUpperCase(), x, currentY);
+                            ctx.fillText(lines[i].toUpperCase(), x, currentY);
+                        }
+                    }
+
+                    // Draw the caption based on whether it has one or two lines
+                    const maxWidth = canvas.width * 0.9;
+                    const lineHeight = 60;
+                    
+                    if (lines.length === 1) {
+                        wrapText(ctx, lines[0], canvas.width / 2, canvas.height - (lineHeight / 2) - 10, maxWidth, lineHeight);
+                    } else if (lines.length === 2) {
+                        wrapText(ctx, lines[0], canvas.width / 2, 60, maxWidth, lineHeight);
+                        wrapText(ctx, lines[1], canvas.width / 2, canvas.height - 20, maxWidth, lineHeight);
+                    } else if (lines.length > 2) {
+                        // For more than 2 lines, we'll try to split them between top and bottom
+                        const half = Math.ceil(lines.length / 2);
+                        const topLines = lines.slice(0, half).join(' ');
+                        const bottomLines = lines.slice(half).join(' ');
+
+                        wrapText(ctx, topLines, canvas.width / 2, 60, maxWidth, lineHeight);
+                        wrapText(ctx, bottomLines, canvas.width / 2, canvas.height - 20, maxWidth, lineHeight);
+                    }
+                    
+                    // Set the modified image to the display
+                    memeImage.src = canvas.toDataURL('image/png');
+                    imageContainer.classList.remove('hidden');
+                    downloadBtn.classList.remove('hidden');
+                };
+
+            } catch (error) {
+                console.error("Failed to generate meme:", error);
+                showError(`Failed to generate meme. Please try again or with a different topic.`);
+            } finally {
+                loadingSpinner.classList.add('hidden');
+            }
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            const imageURL = memeImage.src;
+            if (imageURL) {
+                const link = document.createElement('a');
+                link.href = imageURL;
+                link.download = `meme-${new Date().getTime()}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        });
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+    </script>
+
+</body>
+</html>
