@@ -25,7 +25,7 @@ export default async function handler(req, res) {
         const imagePrompt = `A high-quality, humorous meme image based on the topic: "${topic}". The image should have a witty, English-only caption on it. The text can be at the top or bottom of the image, or both.`;
         
         const imageBlob = await hf.textToImage({
-            model: "black-forest-labs/FLUX.1-dev",
+            model: "stabilityai/stable-diffusion-2-1",
             inputs: imagePrompt,
             parameters: {
                 height: 512,
