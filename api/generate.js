@@ -21,25 +21,38 @@ export default async function handler(req, res) {
 
     const hf = new HfInference(hfApiKey);
 
-    try {
-        const imagePrompt = `A high-quality, humorous meme image based on the topic: "${topic}". The image should have a witty, English-only caption on it. The text can be at the top or bottom of the image, or both.`;
-        
-        const imageBlob = await hf.textToImage({
-            model: "stabilityai/stable-diffusion-2-1",
-            inputs: imagePrompt,
-            parameters: {
-                height: 512,
-                width: 512,
-            },
-        });
+    const maxRetries = 3;
+    let retries = 0;
 
-        const buffer = await imageBlob.arrayBuffer();
-        const imageData = Buffer.from(buffer).toString('base64');
+    while (retries < maxRetries) {
+        try {
+            const imagePrompt = `A high-quality, humorous meme image based on the topic: "${topic}". The image should have a witty, English-only caption on it. The text can be at the top or bottom of the image, or both.`;
+            
+            const imageBlob = await hf.textToImage({
+                model: "stabilityai/stable-diffusion-2-1",
+                inputs: imagePrompt,
+                parameters: {
+                    height: 512,
+                    width: 512,
+                },
+            });
 
-        res.status(200).json({ imageData });
+            const buffer = await imageBlob.arrayBuffer();
+            const imageData = Buffer.from(buffer).toString('base64');
 
-    } catch (error) {
-        console.error("Failed to generate content:", error);
-        res.status(500).json({ error: 'Failed to generate meme. Please try again later.' });
+            return res.status(200).json({ imageData });
+
+        } catch (error) {
+            console.error("Failed to generate content:", error);
+            if (error.message.includes('An error occurred while fetching the blob') && retries < maxRetries - 1) {
+                retries++;
+                console.log(`Retrying... Attempt ${retries} of ${maxRetries}`);
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for 2 seconds before retrying
+            } else {
+                return res.status(500).json({ error: 'Failed to generate meme. Please try again later.' });
+            }
+        }
     }
+
+    return res.status(500).json({ error: 'Failed to generate meme after multiple retries. Please try again later.' });
 }
