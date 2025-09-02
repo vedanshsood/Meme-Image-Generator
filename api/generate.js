@@ -32,7 +32,7 @@ export default async function handler(req, res) {
             const imagePrompt = `A high-quality, humorous meme image based on the topic: "${topic}". The image should have a witty, English-only caption on it. The text can be at the top or bottom of the image, or both.`;
             
             const output = await replicate.run(
-                "stability-ai/stable-diffusion:ac732df8398141485ff76eb0a468e21a0c8411d73c2462804245781a9f5d46a8", {
+                "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b", {
                     input: {
                         prompt: imagePrompt
                     }
